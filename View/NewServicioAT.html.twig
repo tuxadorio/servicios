@@ -100,6 +100,7 @@
 
 {% block css %}
     {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('node_modules/jquery-ui-dist/jquery-ui.min.css') }}" />
     <style>
         .bg-header {
             background-color: #FAFBFC;
@@ -109,6 +110,7 @@
 
 {% block javascripts %}
     {{ parent() }}
+    <script src="{{ asset('node_modules/jquery-ui-dist/jquery-ui.min.js') }}"></script>
     <script type="text/javascript">
         $(document).ready(function () {
             $("#customerac").autocomplete({
@@ -316,7 +318,9 @@
                     {{ i18n.trans('manufacturer') }}
                     <select name="codfabricante" class="form-control">
                         {% for item in fsc.codeModel.all('fabricantes','codfabricante','nombre') %}
-                            <option value="{{ item.code }}">{{ item.description }}</option>
+                            <option value="{{ item.code }}">
+                                {{ item.description | raw }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -325,7 +329,7 @@
         <div class="form-row">
             <div class="col-sm">
                 <div class="form-group">
-                    {{ i18n.trans('description') }}
+                    {{ i18n.trans('observations') }}
                     <textarea class="form-control" name="descripcion"></textarea>
                 </div>
             </div>

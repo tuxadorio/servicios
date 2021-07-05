@@ -1,7 +1,7 @@
 <?php
 /**
  * This file is part of Servicios plugin for FacturaScripts
- * Copyright (C) 2020 Carlos Garcia Gomez <carlos@facturascripts.com>
+ * Copyright (C) 2020-2021 Carlos Garcia Gomez <carlos@facturascripts.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -20,6 +20,7 @@ namespace FacturaScripts\Plugins\Servicios\Model;
 
 use FacturaScripts\Core\Base\DataBase\DataBaseWhere;
 use FacturaScripts\Core\Model\Base;
+use FacturaScripts\Dinamic\Model\Cliente;
 
 /**
  * Description of ServicioAT
@@ -78,19 +79,49 @@ class ServicioAT extends Base\ModelOnChangeClass
      *
      * @var int
      */
-    public $idmaquina;
-
-    /**
-     *
-     * @var int
-     */
     public $idestado;
 
     /**
      *
      * @var int
      */
+    public $idmaquina;
+
+    /**
+     *
+     * @var int
+     */
+    public $idmaquina2;
+
+    /**
+     *
+     * @var int
+     */
+    public $idmaquina3;
+
+    /**
+     *
+     * @var int
+     */
+    public $idmaquina4;
+
+    /**
+     *
+     * @var int
+     */
+    public $idprioridad;
+
+    /**
+     *
+     * @var int
+     */
     public $idservicio;
+
+    /**
+     *
+     * @var string
+     */
+    public $material;
 
     /**
      *
@@ -106,9 +137,9 @@ class ServicioAT extends Base\ModelOnChangeClass
 
     /**
      *
-     * @var int
+     * @var string
      */
-    public $idprioridad;
+    public $solucion;
 
     public function clear()
     {
@@ -135,7 +166,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @return EstadoAT[]
      */
     public function getAvailableStatus()
@@ -145,7 +176,28 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
+     * @return MaquinaAT[]
+     */
+    public function getMachines()
+    {
+        $result = [];
+        $machines = [ $this->idmaquina, $this->idmaquina2, $this->idmaquina3, $this->idmaquina4 ];
+        foreach ($machines as $code) {
+            if (empty($code)) {
+                continue;
+            }
+
+            $machine = new MaquinaAT();
+            $machine->loadFromCode($code);
+            $result[] = $machine;
+        }
+
+        return $result;
+    }
+
+    /**
+     *
      * @return EstadoAT
      */
     public function getStatus()
@@ -156,7 +208,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @return PrioridadAT
      */
     public function getAvailablePriority()
@@ -166,7 +218,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @return PrioridadAT
      */
     public function getPriority()
@@ -177,7 +229,18 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
+     * @return Cliente
+     */
+    public function getSubject()
+    {
+        $cliente = new Cliente();
+        $cliente->loadFromCode($this->codcliente);
+        return $cliente;
+    }
+
+    /**
+     *
      * @return TrabajoAT[]
      */
     public function getTrabajos()
@@ -189,7 +252,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @return string
      */
     public function install()
@@ -203,7 +266,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @return string
      */
     public static function primaryColumn(): string
@@ -212,7 +275,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @return string
      */
     public function primaryDescriptionColumn(): string
@@ -221,7 +284,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @return string
      */
     public static function tableName(): string
@@ -230,13 +293,13 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @return bool
      */
     public function test()
     {
         $utils = $this->toolBox()->utils();
-        $fields = ['descripcion', 'observaciones'];
+        $fields = ['descripcion', 'material', 'observaciones', 'solucion'];
         foreach ($fields as $key) {
             $this->{$key} = $utils->noHtml($this->{$key});
         }
@@ -245,7 +308,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @param string $type
      * @param string $list
      *
@@ -257,7 +320,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @param string $field
      *
      * @return bool
@@ -274,7 +337,7 @@ class ServicioAT extends Base\ModelOnChangeClass
     }
 
     /**
-     * 
+     *
      * @param array $fields
      */
     protected function setPreviousData(array $fields = [])

@@ -1,7 +1,7 @@
 <?php
 /**
  * This file is part of Servicios plugin for FacturaScripts
- * Copyright (C) 2020 Carlos Garcia Gomez <carlos@facturascripts.com>
+ * Copyright (C) 2020-2021 Carlos Garcia Gomez <carlos@facturascripts.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as
@@ -32,6 +32,8 @@ use FacturaScripts\Plugins\Servicios\Model\TrabajoAT;
  */
 class EditServicioAT extends EditController
 {
+
+    use \FacturaScripts\Core\Lib\ExtendedController\DocFilesTrait;
 
     /**
      * 
@@ -94,7 +96,58 @@ class EditServicioAT extends EditController
         parent::createViews();
         $this->setTabsPosition('top');
         $this->createViewsWorks();
+        $this->createViewDocFiles();
         $this->createViewsInvoices();
+        $this->createViewsDeliveryNotes();
+        $this->createViewsEstimations();
+    }
+
+    /**
+     * 
+     * @param string $viewName
+     */
+    protected function createViewsDeliveryNotes(string $viewName = 'ListAlbaranCliente')
+    {
+        $this->addListView($viewName, 'AlbaranCliente', 'delivery-notes', 'fas fa-copy');
+        $this->views[$viewName]->addOrderBy(['fecha', 'hora'], 'date', 2);
+        $this->views[$viewName]->addSearchFields(['codigo', 'numero', 'numero2', 'observaciones']);
+
+        /// disable buttons
+        $this->setSettings($viewName, 'btnDelete', false);
+        $this->setSettings($viewName, 'btnNew', false);
+        $this->setSettings($viewName, 'checkBoxes', false);
+
+        $this->addButton($viewName, [
+            'action' => 'make-delivery-note',
+            'color' => 'warning',
+            'confirm' => true,
+            'icon' => 'fas fa-magic',
+            'label' => 'make-delivery-note'
+        ]);
+    }
+
+    /**
+     * 
+     * @param string $viewName
+     */
+    protected function createViewsEstimations(string $viewName = 'ListPresupuestoCliente')
+    {
+        $this->addListView($viewName, 'PresupuestoCliente', 'estimations', 'fas fa-copy');
+        $this->views[$viewName]->addOrderBy(['fecha', 'hora'], 'date', 2);
+        $this->views[$viewName]->addSearchFields(['codigo', 'numero', 'numero2', 'observaciones']);
+
+        /// disable buttons
+        $this->setSettings($viewName, 'btnDelete', false);
+        $this->setSettings($viewName, 'btnNew', false);
+        $this->setSettings($viewName, 'checkBoxes', false);
+
+        $this->addButton($viewName, [
+            'action' => 'make-estimation',
+            'color' => 'warning',
+            'confirm' => true,
+            'icon' => 'fas fa-magic',
+            'label' => 'make-estimation'
+        ]);
     }
 
     /**
@@ -184,15 +237,32 @@ class EditServicioAT extends EditController
     protected function execPreviousAction($action)
     {
         switch ($action) {
+            case 'add-file':
+                return $this->addFileAction();
+
             case 'auto-quantity':
                 return $this->calculateQuantity();
+
+            case 'delete-file':
+                return $this->deleteFileAction();
+
+            case 'edit-file':
+                return $this->editFileAction();
+
+            case 'make-delivery-note':
+                return $this->makeDeliveryNoteAction();
+
+            case 'make-estimation':
+                return $this->makeEstimationAction();
 
             case 'make-invoice':
                 return $this->makeInvoiceAction();
 
-            default:
-                return parent::execPreviousAction($action);
+            case 'unlink-file':
+                return $this->unlinkFileAction();
         }
+
+        return parent::execPreviousAction($action);
     }
 
     /**
@@ -224,9 +294,13 @@ class EditServicioAT extends EditController
                 }
                 break;
 
+            case 'docfiles':
+                $this->loadDataDocFiles($view, $this->getModelClassName(), $this->getModel()->primaryColumnValue());
+                break;
+
             case 'EditTrabajoAT':
                 $where = [new DataBaseWhere('idservicio', $idservicio)];
-                $view->loadData('', $where);
+                $view->loadData('', $where, ['fechainicio' => 'ASC', 'horainicio' => 'ASC']);
                 if ($view->count > 0) {
                     $this->addButton('EditTrabajoAT', [
                         'action' => 'auto-quantity',
@@ -239,14 +313,20 @@ class EditServicioAT extends EditController
                 }
                 break;
 
+            case 'ListAlbaranCliente':
             case 'ListFacturaCliente':
+            case 'ListPresupuestoCliente':
                 $where = [new DataBaseWhere('idservicio', $idservicio)];
                 $view->loadData('', $where);
                 break;
         }
     }
 
-    protected function makeInvoiceAction()
+    /**
+     * 
+     * @return bool
+     */
+    protected function makeDeliveryNoteAction(): bool
     {
         if (false === $this->permissions->allowUpdate) {
             $this->toolBox()->i18nLog()->warning('not-allowed-modify');
@@ -259,7 +339,59 @@ class EditServicioAT extends EditController
             return true;
         }
 
-        if (false === ServiceToInvoice::generate($service)) {
+        if (false === ServiceToInvoice::deliveryNote($service)) {
+            $this->toolBox()->i18nLog()->warning('record-save-error');
+            return true;
+        }
+
+        $this->toolBox()->i18nLog()->notice('record-updated-correctly');
+        return true;
+    }
+
+    /**
+     * 
+     * @return bool
+     */
+    protected function makeEstimationAction(): bool
+    {
+        if (false === $this->permissions->allowUpdate) {
+            $this->toolBox()->i18nLog()->warning('not-allowed-modify');
+            return true;
+        }
+
+        $service = new ServicioAT();
+        $code = $this->request->get('code', '');
+        if (false === $service->loadFromCode($code) || false === $service->editable) {
+            return true;
+        }
+
+        if (false === ServiceToInvoice::estimation($service)) {
+            $this->toolBox()->i18nLog()->warning('record-save-error');
+            return true;
+        }
+
+        $this->toolBox()->i18nLog()->notice('record-updated-correctly');
+        return true;
+    }
+
+    /**
+     * 
+     * @return bool
+     */
+    protected function makeInvoiceAction(): bool
+    {
+        if (false === $this->permissions->allowUpdate) {
+            $this->toolBox()->i18nLog()->warning('not-allowed-modify');
+            return true;
+        }
+
+        $service = new ServicioAT();
+        $code = $this->request->get('code', '');
+        if (false === $service->loadFromCode($code) || false === $service->editable) {
+            return true;
+        }
+
+        if (false === ServiceToInvoice::invoice($service)) {
             $this->toolBox()->i18nLog()->warning('record-save-error');
             return true;
         }
